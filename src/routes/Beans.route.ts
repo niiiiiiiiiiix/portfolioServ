@@ -1,10 +1,16 @@
-import * as cheerio from 'cheerio';
+import express from 'express';
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 
-let HOMEGROUND_URL =
+const beans = express.Router();
+const HOMEGROUND_URL =
   'https://homegroundcoffeeroasters.com/collections/filter-coffee';
 
-const getHTMLDocument = async () => {
+beans.get('/', (request, response, next) => {
+  response.send('Welcome');
+});
+
+beans.get('/homeground', async (request, response, next) => {
   try {
     const { data } = await axios.get(HOMEGROUND_URL);
     const $ = cheerio.load(data);
@@ -33,10 +39,11 @@ const getHTMLDocument = async () => {
       results.push([name, price, url, status]);
     });
     console.log(results);
-    // return results;
-  } catch (err) {
-    console.log(err);
+    response.status(200).json(results);
+  } catch (error) {
+    error.statusCode = 400;
+    next(error);
   }
-};
+});
 
-export default getHTMLDocument;
+export default beans;
