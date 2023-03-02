@@ -37,7 +37,7 @@ beans.get('/homeground', async (request, response, next) => {
         .attr('href')!;
       let status: string =
         $(element).children('.grid-product__tag').text().trim() || 'Available';
-      results.push([name, price, url, status]);
+      updateResults(name, price, url, status, results);
     });
     response.status(200).json(results);
   } catch (error) {
@@ -75,7 +75,7 @@ beans.get('/alchemist', async (request, response, next) => {
           .children('.product-mark')
           .text()
           .trim() || 'Available';
-      results.push([name, price, url, status]);
+      updateResults(name, price, url, status, results);
     });
     response.status(200).json(results);
   } catch (error) {
@@ -83,5 +83,17 @@ beans.get('/alchemist', async (request, response, next) => {
     next(error);
   }
 });
+
+const updateResults = (
+  name: string,
+  price: string,
+  url: string,
+  status: string,
+  results
+) => {
+  if (status === 'Available') {
+    results.push([name, price, url, status]);
+  }
+};
 
 export default beans;
