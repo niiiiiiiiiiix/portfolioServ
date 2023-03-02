@@ -39,7 +39,6 @@ beans.get('/homeground', async (request, response, next) => {
         $(element).children('.grid-product__tag').text().trim() || 'Available';
       results.push([name, price, url, status]);
     });
-    console.log(results);
     response.status(200).json(results);
   } catch (error) {
     error.statusCode = 400;
@@ -78,7 +77,6 @@ beans.get('/alchemist', async (request, response, next) => {
           .trim() || 'Available';
       results.push([name, price, url, status]);
     });
-    console.log(results);
     response.status(200).json(results);
   } catch (error) {
     error.statusCode = 400;
