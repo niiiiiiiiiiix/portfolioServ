@@ -8,10 +8,6 @@ const HOMEGROUND_FILTER_PATH = '/collections/filter-coffee';
 const ALCHEMIST_BASE_URL = 'https://alchemist.com.sg';
 const ALCHEMIST_FILTER_PATH = '/shop-coffee-beans/filter';
 
-beans.get('/', (request, response, next) => {
-  response.send('Welcome');
-});
-
 beans.get('/homeground', async (request, response, next) => {
   try {
     const listOfBeans: axios.AxiosResponse = await axios.get(HOMEGROUND_BASE_URL + HOMEGROUND_FILTER_PATH);
@@ -20,6 +16,22 @@ beans.get('/homeground', async (request, response, next) => {
       .get()
       .map((bean) => $(bean).attr('href'));
     const fullDetails = await fetchFullDetails(beansPathArray, HOMEGROUND_BASE_URL);
+    response.status(200).json(fullDetails);
+  } catch (error) {
+    error.statusCode = 400;
+    next(error);
+  }
+});
+
+beans.get('/alchemist', async (request, response, next) => {
+  try {
+    const listOfBeans: axios.AxiosResponse = await axios.get(ALCHEMIST_BASE_URL + ALCHEMIST_FILTER_PATH);
+    const $ = cheerio.load(listOfBeans.data);
+    const beansPathArray = $('.grid-item')
+      .not('.sold-out')
+      .get()
+      .map((bean) => $(bean).find('.grid-item-link').attr('href'));
+    const fullDetails = await fetchFullDetails(beansPathArray, ALCHEMIST_BASE_URL);
     response.status(200).json(fullDetails);
   } catch (error) {
     error.statusCode = 400;
@@ -38,7 +50,7 @@ const fetchFullDetails = async (beansPathArray, baseUrl) => {
     switch (baseUrl) {
       case HOMEGROUND_BASE_URL:
         name = $('.product-single__title').text().trim();
-        details = createDetailsObject($);
+        details = createHomegroundDetailsObject($);
         beansInformation.push({
           name: name,
           link: link,
@@ -47,7 +59,7 @@ const fetchFullDetails = async (beansPathArray, baseUrl) => {
         break;
       case ALCHEMIST_BASE_URL:
         name = $('.ProductItem-details-title').text().trim();
-        details = createDetailsObject2($);
+        details = createAlchemistDetailsObject($);
         beansInformation.push({
           name: name,
           link: link,
@@ -69,7 +81,7 @@ const formatPriceData = (value) => {
   }).format(value);
 };
 
-const createDetailsObject = ($) => {
+const createHomegroundDetailsObject = ($) => {
   const details: {} = $('.shogun-heading-component > h1')
     .get()
     .map((detail) => $(detail).text().replace(/[\n]/g, '').trim())
@@ -90,28 +102,24 @@ const createDetailsObject = ($) => {
   return details;
 };
 
-const createDetailsObject2 = ($) => {
+const createAlchemistDetailsObject = ($) => {
   const count = $('.ProductItem-details-excerpt > p').length - 3;
-  const PROCESS = 'Process';
-  const VARIETAL = 'Varietal';
-  const REGION = 'Region';
-  const ORIGIN = 'Origin';
-  const TASTING_NOTES = 'Tasting Notes';
   const details = $('.ProductItem-details-excerpt > p')
     .eq(count)
     .get()
     .map((bean) => $(bean).text())
-    .reduce((detailsObject: {}, detailString) => {
-      detailsObject[convertToCamelCase(PROCESS)] = getSubstringValue(detailString, PROCESS, VARIETAL);
-      detailsObject[convertToCamelCase(VARIETAL)] = getSubstringValue(detailString, VARIETAL, REGION);
-      if (detailString.indexOf(ORIGIN) !== -1) {
-        detailsObject[convertToCamelCase(REGION)] = getSubstringValue(detailString, REGION, ORIGIN);
-        detailsObject[convertToCamelCase(ORIGIN)] = getSubstringValue(detailString, ORIGIN, TASTING_NOTES);
-      } else {
-        detailsObject[convertToCamelCase(REGION)] = getSubstringValue(detailString, REGION, TASTING_NOTES);
-        detailsObject[convertToCamelCase(ORIGIN)] = 'N.A.';
+    .reduce((detailsObject: {}, detailString: string) => {
+      const individualBeanInfo = ['Process', 'Varietal', 'Region', 'Origin', 'Tasting Notes'];
+      if (detailString.indexOf('Origin') === -1) {
+        individualBeanInfo.splice(3, 1);
       }
-      detailsObject[convertToCamelCase(TASTING_NOTES)] = getSubstringValue(detailString, TASTING_NOTES);
+      for (let i = 0; i < individualBeanInfo.length; i++) {
+        detailsObject[convertToCamelCase(individualBeanInfo[i])] = getSubstringValue(
+          detailString,
+          individualBeanInfo[i],
+          individualBeanInfo[i + 1]
+        );
+      }
       return detailsObject;
     }, {});
   return details;
@@ -133,28 +141,6 @@ const convertToCamelCase = (string) => {
     }
   });
   return returnArray.join('');
-};
-
-beans.get('/alchemist', async (request, response, next) => {
-  try {
-    const listOfBeans: axios.AxiosResponse = await axios.get(ALCHEMIST_BASE_URL + ALCHEMIST_FILTER_PATH);
-    const $ = cheerio.load(listOfBeans.data);
-    const beansPathArray = $('.grid-item')
-      .not('.sold-out')
-      .get()
-      .map((bean) => $(bean).find('.grid-item-link').attr('href'));
-    const fullDetails = await fetchFullDetails(beansPathArray, ALCHEMIST_BASE_URL);
-    response.status(200).json(fullDetails);
-  } catch (error) {
-    error.statusCode = 400;
-    next(error);
-  }
-});
-
-const updateResults = (name: string, price: string, url: string, status: string, results) => {
-  if (status === 'Available') {
-    results.push([name, price, url, status]);
-  }
 };
 
 export default beans;
