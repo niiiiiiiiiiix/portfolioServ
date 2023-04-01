@@ -14,17 +14,12 @@ beans.get('/', (request, response, next) => {
 
 beans.get('/homeground', async (request, response, next) => {
   try {
-    const listOfBeans: axios.AxiosResponse = await axios.get(
-      HOMEGROUND_BASE_URL + HOMEGROUND_FILTER_PATH
-    );
+    const listOfBeans: axios.AxiosResponse = await axios.get(HOMEGROUND_BASE_URL + HOMEGROUND_FILTER_PATH);
     const $ = cheerio.load(listOfBeans.data);
     const beansPathArray = $('.grid-product__link')
       .get()
       .map((bean) => $(bean).attr('href'));
-    const fullDetails = await fetchFullDetails(
-      beansPathArray,
-      HOMEGROUND_BASE_URL
-    );
+    const fullDetails = await fetchFullDetails(beansPathArray, HOMEGROUND_BASE_URL);
     response.status(200).json(fullDetails);
   } catch (error) {
     error.statusCode = 400;
@@ -78,21 +73,12 @@ const createDetailsObject = ($) => {
   const details: {} = $('.shogun-heading-component > h1')
     .get()
     .map((detail) => $(detail).text().replace(/[\n]/g, '').trim())
-    .reduce(
-      (
-        detailsObject: {},
-        currentValue: string,
-        currentIndex: number,
-        array: string[]
-      ) => {
-        if (currentIndex & 1) {
-          detailsObject[convertToCamelCase(array[currentIndex - 1])] =
-            currentValue;
-        }
-        return detailsObject;
-      },
-      {}
-    );
+    .reduce((detailsObject: {}, currentValue: string, currentIndex: number, array: string[]) => {
+      if (currentIndex & 1) {
+        detailsObject[convertToCamelCase(array[currentIndex - 1])] = currentValue;
+      }
+      return detailsObject;
+    }, {});
   const pricing: { [weight: string]: string } = {};
   const getTextAreaData = JSON.parse($('textarea').text().trim());
   for (const data of getTextAreaData) {
@@ -106,52 +92,35 @@ const createDetailsObject = ($) => {
 
 const createDetailsObject2 = ($) => {
   const count = $('.ProductItem-details-excerpt > p').length - 3;
+  const PROCESS = 'Process';
+  const VARIETAL = 'Varietal';
+  const REGION = 'Region';
+  const ORIGIN = 'Origin';
+  const TASTING_NOTES = 'Tasting Notes';
   const details = $('.ProductItem-details-excerpt > p')
     .eq(count)
     .get()
     .map((bean) => $(bean).text())
     .reduce((detailsObject: {}, detailString) => {
-      if (detailString.indexOf('Origin') !== -1) {
-        detailsObject['process'] = detailString.substring(
-          detailString.indexOf('Process') + 'Process'.length + 2,
-          detailString.indexOf('Varietal')
-        );
-        detailsObject['varietal'] = detailString.substring(
-          detailString.indexOf('Varietal') + 'Varietal'.length + 2,
-          detailString.indexOf('Region')
-        );
-        detailsObject['region'] = detailString.substring(
-          detailString.indexOf('Region') + 'Region'.length + 2,
-          detailString.indexOf('Origin')
-        );
-        detailsObject['origin'] = detailString.substring(
-          detailString.indexOf('Origin') + 'Origin'.length + 2,
-          detailString.indexOf('Tasting Notes')
-        );
-        detailsObject['tastingNotes'] = detailString.substring(
-          detailString.indexOf('Tasting Notes') + 'Tasting Notes'.length + 2
-        );
+      detailsObject[convertToCamelCase(PROCESS)] = getSubstringValue(detailString, PROCESS, VARIETAL);
+      detailsObject[convertToCamelCase(VARIETAL)] = getSubstringValue(detailString, VARIETAL, REGION);
+      if (detailString.indexOf(ORIGIN) !== -1) {
+        detailsObject[convertToCamelCase(REGION)] = getSubstringValue(detailString, REGION, ORIGIN);
+        detailsObject[convertToCamelCase(ORIGIN)] = getSubstringValue(detailString, ORIGIN, TASTING_NOTES);
       } else {
-        detailsObject['process'] = detailString.substring(
-          detailString.indexOf('Process') + 'Process'.length + 2,
-          detailString.indexOf('Varietal')
-        );
-        detailsObject['varietal'] = detailString.substring(
-          detailString.indexOf('Varietal') + 'Varietal'.length + 2,
-          detailString.indexOf('Region')
-        );
-        detailsObject['region'] = detailString.substring(
-          detailString.indexOf('Region') + 'Region'.length + 2,
-          detailString.indexOf('Tasting Notes')
-        );
-        detailsObject['origin'] = 'N.A.';
-        detailsObject['tastingNotes'] = detailString.substring(
-          detailString.indexOf('Tasting Notes') + 'Tasting Notes'.length + 2
-        );
+        detailsObject[convertToCamelCase(REGION)] = getSubstringValue(detailString, REGION, TASTING_NOTES);
+        detailsObject[convertToCamelCase(ORIGIN)] = 'N.A.';
       }
+      detailsObject[convertToCamelCase(TASTING_NOTES)] = getSubstringValue(detailString, TASTING_NOTES);
       return detailsObject;
     }, {});
   return details;
+};
+
+const getSubstringValue = (string, start, end = string) => {
+  const startOfSubstring = string.indexOf(start) + start.length + 2;
+  const endOfSubstring = Math.max(end.length, string.indexOf(end));
+  return string.substring(startOfSubstring, endOfSubstring);
 };
 
 const convertToCamelCase = (string) => {
@@ -168,18 +137,13 @@ const convertToCamelCase = (string) => {
 
 beans.get('/alchemist', async (request, response, next) => {
   try {
-    const listOfBeans: axios.AxiosResponse = await axios.get(
-      ALCHEMIST_BASE_URL + ALCHEMIST_FILTER_PATH
-    );
+    const listOfBeans: axios.AxiosResponse = await axios.get(ALCHEMIST_BASE_URL + ALCHEMIST_FILTER_PATH);
     const $ = cheerio.load(listOfBeans.data);
     const beansPathArray = $('.grid-item')
       .not('.sold-out')
       .get()
       .map((bean) => $(bean).find('.grid-item-link').attr('href'));
-    const fullDetails = await fetchFullDetails(
-      beansPathArray,
-      ALCHEMIST_BASE_URL
-    );
+    const fullDetails = await fetchFullDetails(beansPathArray, ALCHEMIST_BASE_URL);
     response.status(200).json(fullDetails);
   } catch (error) {
     error.statusCode = 400;
@@ -187,13 +151,7 @@ beans.get('/alchemist', async (request, response, next) => {
   }
 });
 
-const updateResults = (
-  name: string,
-  price: string,
-  url: string,
-  status: string,
-  results
-) => {
+const updateResults = (name: string, price: string, url: string, status: string, results) => {
   if (status === 'Available') {
     results.push([name, price, url, status]);
   }
