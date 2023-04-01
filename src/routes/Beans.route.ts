@@ -39,38 +39,33 @@ beans.get('/alchemist', async (request, response, next) => {
   }
 });
 
-const fetchFullDetails = async (beansPathArray, baseUrl) => {
-  const beansInformation = [];
-  for (let i = 0; i < beansPathArray.length; i++) {
-    const link: string = baseUrl + beansPathArray[i];
-    const content: axios.AxiosResponse = await axios.get(link);
-    const $: cheerio.CheerioAPI = cheerio.load(content.data);
-    let name: string;
-    let details;
-    switch (baseUrl) {
-      case HOMEGROUND_BASE_URL:
-        name = $('.product-single__title').text().trim();
-        details = createHomegroundDetailsObject($);
-        beansInformation.push({
-          name: name,
-          link: link,
-          details,
-        });
-        break;
-      case ALCHEMIST_BASE_URL:
-        name = $('.ProductItem-details-title').text().trim();
-        details = createAlchemistDetailsObject($);
-        beansInformation.push({
-          name: name,
-          link: link,
-          details,
-        });
-        break;
-      default:
-        break;
-    }
-  }
-  return beansInformation;
+const fetchFullDetails = (beansPathArray, baseUrl) => {
+  return Promise.all(
+    beansPathArray.map(async (pathUrl) => {
+      const link: string = baseUrl + pathUrl;
+      const content: axios.AxiosResponse = await axios.get(link);
+      const $: cheerio.CheerioAPI = cheerio.load(content.data);
+      let name: string;
+      let details: {};
+      switch (baseUrl) {
+        case HOMEGROUND_BASE_URL:
+          name = $('.product-single__title').text().trim();
+          details = createHomegroundDetailsObject($);
+          break;
+        case ALCHEMIST_BASE_URL:
+          name = $('.ProductItem-details-title').text().trim();
+          details = createAlchemistDetailsObject($);
+          break;
+        default:
+          break;
+      }
+      return {
+        name: name,
+        link: link,
+        details,
+      };
+    })
+  ).catch((err) => console.log(err));
 };
 
 const formatPriceData = (value) => {
